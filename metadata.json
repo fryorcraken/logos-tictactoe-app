@@ -1,12 +1,11 @@
 {
   "name": "tictactoe",
   "version": "1.0.0",
-  "type": "ui_qml",
+  "type": "ui",
   "category": "games",
-  "description": "Multiplayer tic-tac-toe — QML view with process-isolated C++ backend",
+  "description": "Multiplayer tic-tac-toe — C++ UI plugin with QML widget (loaded via QQuickWidget)",
   "main": "tictactoe_plugin",
   "icon": null,
-  "view": "qml/Main.qml",
   "dependencies": [],
 
   "nix": {
