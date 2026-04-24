@@ -8,7 +8,35 @@ Built by following **the `tutorial-v1` branch** of [`logos-tutorial`'s Part 3](h
 
 ## Status
 
-**Slice 5 (local single-player checkpoint) ✅ green.** `lgs basecamp install` + `lgs basecamp launch alice` loads the tictactoe sidebar entry, renders the 3×3 board, plays X/O with win/draw detection, and resets via "New Game." Multiplayer (slice 6) is next.
+**Slice 5 (local single-player) ✅ green.** `lgs basecamp install` + `lgs basecamp launch alice` loads the tictactoe sidebar entry, renders the 3×3 board, plays X/O with win/draw detection, and resets via "New Game."
+
+**Slice 6 (multiplayer via `delivery_module`) 🚧 BLOCKED on an upstream SDK bug.** The full wire path is implemented and the module builds clean, but the delivery-receive code path segfaults basecamp — see [Slice 6 — blocked](#slice-6--blocked) below for the coredump stack + reasoning. Multiplayer wiring is kept in the tree, dormant, so nothing needs to be re-implemented when the upstream fix lands. The auto-enable call in `TictactoeBackend`'s constructor is commented out so single-player still launches cleanly.
+
+### Slice 6 — blocked
+
+`delivery_module` receives messages exclusively via the `messageReceived` event — there is no `getMessages` / `poll` / `recv` RPC on it (confirmed against the pinned rev's source). Subscribing to that event from our UI-plugin backend calls `m_logos->delivery_module.on("messageReceived", …)`, which at `tutorial-v1` resolves to a null function pointer in `logos-cpp-sdk`'s `LogosAPIClient::onEvent`. basecamp segfaults within ~500 ms of the click (or `QTimer::singleShot` auto-call) with this stack:
+
+```
+#0  0x0000000000000000 n/a (n/a + 0x0)
+#1  LogosAPIConsumer::onEvent            (tictactoe.so)
+#2  LogosAPIClient::onEvent              (tictactoe.so)
+#3  DeliveryModule::on                   (tictactoe.so)
+#4  TictactoeBackend::registerDeliveryHandlers
+#5  TictactoeBackend::enableMultiplayer
+#6  QObject::event                       (Qt queued event from QTimer)
+```
+
+Reproduces identically with both the dev `linux-amd64-dev` variant (via `lgs basecamp install`) and the portable `linux-amd64` variant (manually staged into alice's profile plus `lgs basecamp launch alice --no-clean`). Rules out packaging — the bug is in the logos-cpp-sdk code linked into every built variant of our plugin.
+
+The [reference tictactoe project](https://github.com/fryorcraken/logos-module-tictactoe) dodges this by splitting its module into a **core plugin** (separate `logos_host` process, where `.on()` works) that holds the delivery subscription + a message queue, plus a **UI plugin** that polls the core module over RPC — the core is the shim that turns the broken event path into a pollable surface. That architecture is incompatible with this project's "single module" design spec.
+
+Paths forward (in order of preference):
+
+1. **Wait for basecamp to ship against a fixed `logos-cpp-sdk`.** The `onEvent` null-deref is an SDK bug; a later basecamp build will include the fix. Once basecamp v0.1.2 (or a later tag that bundles a newer delivery_module) is out, bump `logos-module-builder` off `tutorial-v1` and uncomment the single line in `TictactoeBackend`'s constructor. Dormant multiplayer code should come alive as-is.
+2. Accept the single-module constraint is incompatible with tutorial-v1 multiplayer-receive, and pivot to the reference's two-module split. Not doing this now — it contradicts the project's "single `tictactoe` module" design call.
+3. Send-only multiplayer (never call `.on()`, only broadcast). Proves the `send` path works but is useless for 1v1. Skipped — not worth the code weight for a demo-only signal.
+
+**Current stance: waiting.** Tracking via basecamp/delivery_module release cadence.
 
 ## Design (differs from the tutorial reference)
 
@@ -43,8 +71,8 @@ lgs basecamp launch alice   # opens basecamp; click the tictactoe sidebar entry
 | 3 | C++ backend with local game logic + plugin shell | ✅ done |
 | 4 | QML view (3×3 board, status, new game) | ✅ done |
 | 5 | Local checkpoint: `lgs basecamp install` + `launch alice` | ✅ done |
-| 6 | Multiplayer via `delivery_module` | in progress |
-| 7 | Multiplayer checkpoint: `launch alice` + `launch bob` | pending |
+| 6 | Multiplayer via `delivery_module` | 🚧 **blocked — SDK `.on()` null-deref at tutorial-v1** (wiring complete & committed, dormant) |
+| 7 | Multiplayer checkpoint: `launch alice` + `launch bob` | blocked by slice 6 |
 
 ## Deviations from the tutorial
 

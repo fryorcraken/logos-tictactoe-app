@@ -99,22 +99,10 @@ Item {
             }
         }
 
-        RowLayout {
+        Button {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 12
-
-            Button {
-                text: "New Game"
-                onClicked: backend.newGame()
-            }
-            Button {
-                text: backend.mpStatus === 0 ? "Enable Multiplayer" : "Disable Multiplayer"
-                enabled: backend.mpStatus !== 1   // disabled while connecting
-                onClicked: {
-                    if (backend.mpStatus === 0) backend.enableMultiplayer()
-                    else                        backend.disableMultiplayer()
-                }
-            }
+            text: "New Game"
+            onClicked: backend.newGame()
         }
 
         Rectangle {

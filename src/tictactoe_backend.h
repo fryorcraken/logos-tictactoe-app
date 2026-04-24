@@ -30,8 +30,10 @@ public:
     Q_INVOKABLE void newGame();
     Q_INVOKABLE int  play(int row, int col);
 
-    Q_INVOKABLE void enableMultiplayer();
-    Q_INVOKABLE void disableMultiplayer();
+    // Multiplayer is auto-enabled on construction; kept as a slot for the
+    // deferred QTimer::singleShot wiring and for the destructor teardown.
+    void enableMultiplayer();
+    void disableMultiplayer();
 
     QVariantList board() const;
     QString      status() const         { return m_status; }

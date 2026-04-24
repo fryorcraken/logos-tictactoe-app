@@ -6,6 +6,7 @@
 
 #include <QByteArray>
 #include <QDebug>
+#include <QTimer>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -54,10 +55,26 @@ TictactoeBackend::TictactoeBackend(LogosAPI* api, QObject* parent)
     if (m_logosAPI) m_logos = new LogosModules(m_logosAPI);
     resetBoard();
     refreshStatus();
+
+    // Multiplayer auto-enable is DISABLED — it triggers a null-deref in
+    // logos-cpp-sdk's LogosAPIClient::onEvent at tutorial-v1 (confirmed from
+    // both dev and portable .lgx variants; coredump stack: LogosAPIConsumer
+    // ::onEvent → LogosAPIClient::onEvent → DeliveryModule::on → … crash).
+    // The delivery_module receive path requires `.on("messageReceived", …)`
+    // which is the code path that segfaults. No poll-style RPC exists on
+    // delivery_module to work around it (checked all its Q_INVOKABLEs).
+    // Single-module UI-plugin + multiplayer-receive is structurally
+    // incompatible with tutorial-v1 + basecamp v0.1.1. All the multiplayer
+    // code below (enable/disable/broadcast/handlers) is wired and kept in
+    // place, but dormant. Re-enable the line below when basecamp ships a
+    // build against a logos-cpp-sdk rev that fixes the onEvent null-deref.
+    // See README "Slice 6 — blocked" section for the full story.
+    // QTimer::singleShot(0, this, &TictactoeBackend::enableMultiplayer);
 }
 
 TictactoeBackend::~TictactoeBackend()
 {
+    disableMultiplayer();
     delete m_logos;
 }
 
