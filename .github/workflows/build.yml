@@ -1,0 +1,77 @@
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags:
+      - 'v*'
+      - 'slice-*'
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # needed for softprops/action-gh-release on tag
+
+jobs:
+  lgx:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Nix (with flakes)
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            accept-flake-config = true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: lgs-install
+
+      - name: Install lgs (logos-scaffold)
+        run: |
+          cargo install --git https://github.com/logos-co/logos-scaffold --locked
+          lgs --version
+
+      - name: lgs basecamp setup
+        run: lgs basecamp setup
+
+      - name: lgs basecamp install
+        run: lgs basecamp install
+
+      - name: Stage .lgx for upload
+        id: stage
+        run: |
+          set -euo pipefail
+          lgx=$(find ~/.cache/logos-scaffold -name 'logos-tictactoe-module-lib.lgx' | head -n1)
+          if [ -z "$lgx" ]; then
+            echo "::error::No .lgx found under ~/.cache/logos-scaffold"
+            find ~/.cache/logos-scaffold -maxdepth 5 -print
+            exit 1
+          fi
+          cp "$lgx" "$GITHUB_WORKSPACE/logos-tictactoe-module-lib.lgx"
+          echo "path=$GITHUB_WORKSPACE/logos-tictactoe-module-lib.lgx" >> "$GITHUB_OUTPUT"
+
+      - name: Upload .lgx (per-run artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: logos-tictactoe-module-lib-${{ github.sha }}
+          path: ${{ steps.stage.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Attach .lgx to Release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.stage.outputs.path }}
+          fail_on_unmatched_files: true
+          generate_release_notes: true

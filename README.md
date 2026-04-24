@@ -1,8 +1,14 @@
 # logos-tictactoe-app
 
+[![build](https://github.com/fryorcraken/logos-tictactoe-app/actions/workflows/build.yml/badge.svg)](https://github.com/fryorcraken/logos-tictactoe-app/actions/workflows/build.yml)
+
 Multiplayer tic-tac-toe built as a single Logos C++ UI module (`type: "ui"`). Game logic lives in a `TictactoeBackend` QObject; the UI is a QML view loaded into the plugin via `QQuickWidget` (Tutorial Part 3, **Option A**). Later slices add `delivery_module` for multiplayer.
 
 Built by following **the `tutorial-v1` branch** of [`logos-tutorial`'s Part 3](https://github.com/logos-co/logos-tutorial/blob/tutorial-v1/tutorial-cpp-ui-app.md), using `lgs basecamp` in place of raw `nix run` for install/launch where possible. Both `logos-module-builder` and the tutorial repo are pinned to `tutorial-v1` for consistency with what `lgs basecamp`'s source-built basecamp expects.
+
+## Status
+
+**Slice 5 (local single-player checkpoint) ✅ green.** `lgs basecamp install` + `lgs basecamp launch alice` loads the tictactoe sidebar entry, renders the 3×3 board, plays X/O with win/draw detection, and resets via "New Game." Multiplayer (slice 6) is next.
 
 ## Design (differs from the tutorial reference)
 
@@ -10,11 +16,23 @@ The tutorial's reference case (`calc_ui_cpp`) has two modules — a core `calc_m
 
 - **tictactoe** (`type: "ui"`) — C++ Qt plugin. `createWidget(LogosAPI*)` returns a `QQuickWidget` loading `Main.qml`; a `TictactoeBackend` QObject is set as the QML `backend` context property. The backend owns board state, turn management, win/draw detection, and (later) multiplayer wiring via `delivery_module`.
 
-Rationale: the game rules are tiny (a 3×3 board and a winner check), not worth a second process boundary on their own. With no external module to call, we also skip the generated `logos_sdk.h` path — the backend never needs `LogosModules`.
+Rationale: the game rules are tiny (a 3×3 board and a winner check), not worth a second process boundary on their own. With no external module to call in slices 1–5, we also skip the generated `logos_sdk.h` path — the backend never needs `LogosModules`. Slice 6 adds one dep (`delivery_module`) so the backend starts using `LogosAPI*`.
 
-## Status
+## Quick start
 
-See [slice plan](#slice-plan) for what's built and what's next.
+Prerequisites:
+
+- [Nix](https://nixos.org/download.html) with flakes enabled.
+- [`lgs`](https://github.com/logos-co/logos-scaffold) (alias for `logos-scaffold`) on `$PATH`. Install with `cargo install --git https://github.com/logos-co/logos-scaffold`.
+
+```bash
+git clone https://github.com/fryorcraken/logos-tictactoe-app.git
+cd logos-tictactoe-app
+
+lgs basecamp setup          # one-time: pins + builds basecamp & lgpm, seeds alice/bob
+lgs basecamp install        # builds the .lgx, installs into alice + bob
+lgs basecamp launch alice   # opens basecamp; click the tictactoe sidebar entry
+```
 
 ## Slice plan
 
@@ -24,7 +42,7 @@ See [slice plan](#slice-plan) for what's built and what's next.
 | 2 | Configure module (`metadata.json`, interfaces/, CMakeLists) | ✅ done |
 | 3 | C++ backend with local game logic + plugin shell | ✅ done |
 | 4 | QML view (3×3 board, status, new game) | ✅ done |
-| 5 | Local checkpoint: `lgs basecamp install` + `launch alice` | in progress |
+| 5 | Local checkpoint: `lgs basecamp install` + `launch alice` | ✅ done |
 | 6 | Multiplayer via `delivery_module` | pending |
 | 7 | Multiplayer checkpoint: `launch alice` + `launch bob` | pending |
 
@@ -57,10 +75,50 @@ Where `lgs basecamp` supersedes a raw `nix` command from the tutorial.
 | 1 | `nix flake init -t github:logos-co/logos-module-builder/tutorial-v1#ui-module` | (none — kept tutorial command, but initially scaffolded with the wrong template name; see deviation row) | `lgs` has no template-init subcommand; `lgs basecamp` is for dogfooding, not scaffolding. |
 | 1 | (tutorial doesn't cover `scaffold.toml`) | `lgs init` | Required by `lgs basecamp *` commands. Creates `scaffold.toml` + `.scaffold/{state,logs}`, appends `.scaffold` to `.gitignore`. |
 | 1 | (tutorial doesn't cover this) | `lgs basecamp setup` | One-time bootstrap: pins basecamp repo, builds `basecamp` + `lgpm` binaries, seeds `alice` / `bob` profile dirs under `.scaffold/basecamp/profiles/`. Prerequisite for `basecamp modules/install/launch`. |
-| 5 | Tutorial Step 10 (`nix run .`) launches `logos-standalone-app` with this plugin | `lgs basecamp install` + `lgs basecamp launch alice` | Installs `.lgx` into the alice profile, then launches basecamp as alice. Matches the "install into basecamp" workflow rather than the tutorial's standalone runner. |
+| 5 | (tutorial doesn't cover it — scaffold.toml is `lgs`-specific) | `lgs basecamp modules` | Auto-discovers the root flake's `#lgx` and writes it into `scaffold.toml`'s `[basecamp.modules]` table (with the module name resolved from `metadata.json`). Captures the install set. |
+| 5 | Tutorial Step 10: `nix run .` launches `logos-standalone-app` with this plugin | `lgs basecamp install` | Builds `.#lgx` and installs into every seeded profile (alice, bob) via `lgpm`. Exercises the basecamp-facing toolchain, not a standalone runner. |
+| 5 | Tutorial Step 10: `nix run .` launches the host | `lgs basecamp launch alice` | Launches basecamp (the Logos host app, built from source during `lgs basecamp setup`) in the alice profile with clean-slate semantics. Implicitly re-runs `install` before launching. |
 
-_Row for `lgs basecamp modules` added when it's next run against the pivoted code._
+## CI
 
-## Build + run (populated as slices complete)
+[`.github/workflows/build.yml`](.github/workflows/build.yml) runs on every push to `master`, every pull request, and every tag matching `v*` or `slice-*`. It:
 
-_TBD — filled in once slice 5's `lgs basecamp install` + `launch alice` checkpoint is green._
+1. Installs Nix with flakes.
+2. Installs `lgs` from source (`cargo install --git logos-co/logos-scaffold`).
+3. Runs `lgs basecamp setup` then `lgs basecamp install` — same commands developers use locally.
+4. Uploads the resulting `.lgx` as a per-run artifact.
+5. On `v*` / `slice-*` tags, attaches the `.lgx` to the corresponding GitHub Release.
+
+To publish a slice checkpoint:
+
+```bash
+git tag slice-5
+git push origin slice-5
+# CI builds and attaches logos-tictactoe-module-lib.lgx to the slice-5 Release
+```
+
+## Build + run
+
+Local dev, after `lgs basecamp setup` has been run once:
+
+```bash
+lgs basecamp install               # build + install into alice + bob
+lgs basecamp launch alice          # open basecamp as alice
+# — click the tictactoe icon in the sidebar to open the board —
+lgs basecamp launch bob            # (after slice 6) second peer for multiplayer
+```
+
+QML-only edits (layout, styling, JS logic in `src/qml/Main.qml`) can be iterated without rebuilding by setting `QML_PATH`:
+
+```bash
+# In the basecamp process's environment (set before `lgs basecamp launch`):
+export QML_PATH="$PWD/src/qml"
+```
+
+Per [Tutorial Step 7.4](https://github.com/logos-co/logos-tutorial/blob/tutorial-v1/tutorial-cpp-ui-app.md), when `QML_PATH` is set the plugin loads `Main.qml` from disk instead of the embedded Qt resource — no Nix rebuild needed. Any `.cpp`/`.h`/CMakeLists/metadata change still requires `lgs basecamp install`.
+
+Reset a profile if something gets stuck:
+
+```bash
+lgs basecamp reset
+```
