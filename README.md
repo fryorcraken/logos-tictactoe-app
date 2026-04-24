@@ -23,7 +23,7 @@ Rationale: the game rules are tiny (a 3×3 board and a winner check), not worth 
 Prerequisites:
 
 - [Nix](https://nixos.org/download.html) with flakes enabled.
-- [`lgs`](https://github.com/logos-co/logos-scaffold) (alias for `logos-scaffold`) on `$PATH`. Install with `cargo install --git https://github.com/logos-co/logos-scaffold`.
+- [`lgs`](https://github.com/logos-co/logos-scaffold) (alias for `logos-scaffold`) on `$PATH`. The `lgs basecamp` subcommand currently lives on the `feature/basecamp` branch, so install with `cargo install --git https://github.com/logos-co/logos-scaffold --branch feature/basecamp --locked`.
 
 ```bash
 git clone https://github.com/fryorcraken/logos-tictactoe-app.git

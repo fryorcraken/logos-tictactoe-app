@@ -59,7 +59,7 @@ Roughly:
 
 - Linux (`.so`, `linux-amd64` / `linux-amd64-dev` variants).
 - Nix with flakes enabled.
-- `lgs` (alias for `logos-scaffold`) on `PATH`. Install via `cargo install --path .` from `~/src/logos-co/logos-scaffold`, or `cargo install --git https://github.com/logos-co/logos-scaffold`.
+- `lgs` (alias for `logos-scaffold`) on `PATH`. The `lgs basecamp` subcommand currently lives on the `feature/basecamp` branch of `logos-scaffold`. Install via `cargo install --path .` from `~/src/logos-co/logos-scaffold` (after `git checkout feature/basecamp` there), or `cargo install --git https://github.com/logos-co/logos-scaffold --branch feature/basecamp --locked`.
 
 ## Gotchas worth knowing up front
 

@@ -36,9 +36,9 @@ jobs:
         with:
           shared-key: lgs-install
 
-      - name: Install lgs (logos-scaffold)
+      - name: Install lgs (logos-scaffold, feature/basecamp branch)
         run: |
-          cargo install --git https://github.com/logos-co/logos-scaffold --locked
+          cargo install --git https://github.com/logos-co/logos-scaffold --branch feature/basecamp --locked
           lgs --version
 
       - name: lgs basecamp setup
