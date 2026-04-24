@@ -1,10 +1,8 @@
 {
-  description = "Logos ui_qml module (C++ backend + QML view) — replace with your description";
+  description = "Multiplayer tic-tac-toe — single Logos C++ UI module, QML view via QQuickWidget";
 
   inputs = {
     logos-module-builder.url = "github:logos-co/logos-module-builder/tutorial-v1";
-    # Add core module dependencies as inputs (must match metadata.json "dependencies"), e.g.:
-    # some_module.url = "github:logos-co/logos-some-module";
   };
 
   outputs = inputs@{ logos-module-builder, ... }:
@@ -12,5 +10,12 @@
       src = ./.;
       configFile = ./metadata.json;
       flakeInputs = inputs;
+
+      # Basecamp looks up UI plugins as `<dir>/<dir>.so` but the
+      # `logos_module()` CMake macro produces `<dir>_plugin.so`. Ship both so
+      # basecamp can load the plugin. Tracking: logos-co/logos-basecamp#136.
+      postInstall = ''
+        cp $out/lib/tictactoe_plugin.so $out/lib/tictactoe.so
+      '';
     };
 }
