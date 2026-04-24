@@ -6,12 +6,12 @@
   "description": "Multiplayer tic-tac-toe — C++ UI plugin with QML widget (loaded via QQuickWidget)",
   "main": "tictactoe_plugin",
   "icon": null,
-  "dependencies": [],
+  "dependencies": ["delivery_module"],
 
   "nix": {
     "packages": {
-      "build": [],
-      "runtime": []
+      "build": ["protobuf"],
+      "runtime": ["protobuf"]
     },
     "external_libraries": [],
     "cmake": {

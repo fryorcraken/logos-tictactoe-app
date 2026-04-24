@@ -16,6 +16,24 @@ Item {
         return "#ffffff"
     }
 
+    function mpStatusText() {
+        switch (backend.mpStatus) {
+            case 0:  return "Multiplayer off"
+            case 1:  return "Connecting…"
+            case 2:  return "Connected — sent " + backend.mpMessagesSent + ", received " + backend.mpMessagesReceived
+            case 3:  return "Error: " + backend.mpError
+            default: return ""
+        }
+    }
+    function mpStatusColor() {
+        switch (backend.mpStatus) {
+            case 1:  return "#f0883e"   // connecting — amber
+            case 2:  return "#56d364"   // connected — green
+            case 3:  return "#f85149"   // error — red
+            default: return "#8b949e"   // off — grey
+        }
+    }
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 24
@@ -81,10 +99,37 @@ Item {
             }
         }
 
-        Button {
+        RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            text: "New Game"
-            onClicked: backend.newGame()
+            spacing: 12
+
+            Button {
+                text: "New Game"
+                onClicked: backend.newGame()
+            }
+            Button {
+                text: backend.mpStatus === 0 ? "Enable Multiplayer" : "Disable Multiplayer"
+                enabled: backend.mpStatus !== 1   // disabled while connecting
+                onClicked: {
+                    if (backend.mpStatus === 0) backend.enableMultiplayer()
+                    else                        backend.disableMultiplayer()
+                }
+            }
+        }
+
+        Rectangle {
+            Layout.fillWidth: true
+            height: 32
+            color: "#161616"
+            radius: 6
+            border.color: root.mpStatusColor()
+            border.width: 1
+            Text {
+                anchors.centerIn: parent
+                text: root.mpStatusText()
+                color: root.mpStatusColor()
+                font.pixelSize: 13
+            }
         }
     }
 }
